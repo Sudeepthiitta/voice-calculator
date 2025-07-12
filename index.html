@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎤 Voice Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f8;
+      color: #333;
+      text-align: center;
+      padding: 2rem;
+    }
+    h1 {
+      color: #4a90e2;
+      margin-bottom: 0.5rem;
+    }
+    p {
+      margin: 0.5rem 0;
+    }
+    button {
+      padding: 1rem 2rem;
+      font-size: 1rem;
+      background: #4a90e2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #357ABD;
+    }
+    #result {
+      margin-top: 2rem;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .footer {
+      margin-top: 3rem;
+      font-size: 0.9rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 Voice Calculator</h1>
+  <p>Click below and say:</p>
+  <p><em>"five plus three", "six times two", "twelve divided by four"</em></p>
+  <p>✅ Speak words. Avoid symbols like * + / -</p>
+  <button id="listenBtn">🎙️ Start Listening</button>
+  <div id="result"></div>
+  <div class="footer">© 2025 Voice Calculator App</div>
+
+  <script>
+    const listenBtn = document.getElementById('listenBtn');
+    const resultDiv = document.getElementById('result');
+
+    const numberWords = {
+      'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
+      'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
+      'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13,
+      'fourteen': 14, 'fifteen': 15, 'sixteen': 16,
+      'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20
+    };
+
+    function wordsToNumbers(text) {
+      return text.split(' ').map(word => numberWords[word] !== undefined ? numberWords[word] : word).join(' ');
+    }
+
+    function normalizeText(text) {
+      text = text.toLowerCase();
+      text = text.replace(/[^a-z0-9\s]/g, ' ');
+      text = text.replace(/\s+/g, ' ');
+      text = text.replace(/\bx\b/g, ' times ');
+      text = text.replace(/\*/g, ' times ');
+      text = text.replace(/\//g, ' divided ');
+      text = text.replace(/\+/g, ' plus ');
+      text = text.replace(/\-/g, ' minus ');
+      text = wordsToNumbers(text);
+      return text.trim();
+    }
+
+    function parseAndCalculate(text) {
+      let words = text.split(' ');
+      let nums = words.filter(w => !isNaN(parseFloat(w))).map(Number);
+      if (nums.length < 2) return {error: "❌ Not enough numbers detected."};
+
+      if (text.includes('plus')) return {result: nums[0] + nums[1]};
+      if (text.includes('minus')) return {result: nums[0] - nums[1]};
+      if (text.includes('times') || text.includes('multiplied')) return {result: nums[0] * nums[1]};
+      if (text.includes('divided')) {
+        if (nums[1] === 0) return {error: "❌ Division by zero."};
+        return {result: (nums[0] / nums[1]).toFixed(2)};
+      }
+      return {error: "❌ No operator detected. Please use words like 'plus', 'minus', 'times', or 'divided'."};
+    }
+
+    function speak(text) {
+      if ('speechSynthesis' in window) {
+        const msg = new SpeechSynthesisUtterance(text);
+        window.speechSynthesis.speak(msg);
+      }
+    }
+
+    function display(text) {
+      resultDiv.innerHTML = text;
+    }
+
+    function listen() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        display('❌ Sorry, your browser does not support Speech Recognition.');
+        return;
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      display('🎙️ Listening... Please speak clearly.');
+
+      recognition.start();
+
+      recognition.onresult = (event) => {
+        const raw = event.results[0][0].transcript;
+        display(`✅ You said: "${raw}"`);
+        const cleaned = normalizeText(raw);
+        display(`✅ You said: "${raw}"<br>Interpreted: ${cleaned}`);
+        const outcome = parseAndCalculate(cleaned);
+        if (outcome.result !== undefined) {
+          display(`✅ You said: "${raw}"<br>Interpreted: ${cleaned}<br>✅ Result: ${outcome.result}`);
+          speak(`The result is ${outcome.result}`);
+        } else {
+          display(`✅ You said: "${raw}"<br>Interpreted: ${cleaned}<br>${outcome.error}`);
+          speak(outcome.error);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        display(`❌ Error: ${event.error}`);
+        speak("Sorry, there was an error.");
+      };
+    }
+
+    listenBtn.addEventListener('click', listen);
+  </script>
+</body>
+</html>
